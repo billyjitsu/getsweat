@@ -138,6 +138,13 @@ function getDetailedStatus(classData) {
 
 // Attempt booking and send Telegram notification with result
 async function attemptBooking(classData, classInfo) {
+  // Skip if already reserved for this class
+  if (classData.is_user_reserved) {
+    console.log(`[booking] Already reserved for ${classInfo.label} — skipping`);
+    classInfo.booked = true;
+    return;
+  }
+
   const result = await bookClassWithSpot(classData.id, classInfo.label);
 
   if (result.success) {
@@ -288,8 +295,14 @@ async function monitorClasses() {
       classInfo.lastAvailability = matchingClass.available_spot_count;
       classInfo.lastBookingStatus = getBookingStatus(matchingClass);
 
+      // If already reserved, mark as booked and skip
+      if (matchingClass.is_user_reserved) {
+        console.log(`Already reserved for this class — skipping`);
+        classInfo.booked = true;
+        classInfo.notificationSent = true;
+      }
       // Check if it's available now
-      if (isClassAvailable(matchingClass)) {
+      else if (isClassAvailable(matchingClass)) {
         if (classInfo.lastBookingStatus === 'Open') {
           await attemptBooking(matchingClass, classInfo);
           classInfo.notificationSent = true;
